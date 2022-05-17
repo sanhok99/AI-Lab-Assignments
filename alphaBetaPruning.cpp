@@ -1,25 +1,30 @@
-#include <iostream>
-#include<stdlib.h>
-#include <cmath>
-#include <vector>
+/*
+Shounak Saha
+2021SMCS002
+program to implement
+1. build tree
+2. minmax tree
+3. alpha beta pruning
+4. optimal path
+*/
+
+
+
 #include<bits/stdc++.h>
-
-
-
 using namespace std;
 typedef vector<int> rtype;
 typedef vector<vector<int> > board;
-static int count1=0;
+static int count_flag=0;
 
 typedef struct node          // Type of a node in the adjacency list.
 {
     int vertex;
-    int value;              // Vertex number.
+    int value;
     int depth;
     int alpha;
     int beta;
     struct node *next;      // Pointer to the next adjacent node.
-} node;                     // Type name ’node’
+} node;                     // Type name â€™nodeâ€™
 
 typedef struct          // Type of a graph
 {
@@ -37,9 +42,9 @@ void makeTree(int b_factor,int depth,int n_nodes,graph g[])
         g[i].vN=i;
 
     }
-    int kk=n_nodes-pow(b_factor,depth);
+    int kk=n_nodes-pow(b_factor,depth);     //flag set to track the start vertex of the leaf node
     int d=1,j=0;
-    for(int i=1;i<=n_nodes-1;i++)
+    for(int i=1;i<=n_nodes-1;i++)   //creating a full binary tree
     {
         node* t=(node*)malloc(sizeof(node));
         t->next=NULL;
@@ -48,7 +53,7 @@ void makeTree(int b_factor,int depth,int n_nodes,graph g[])
 
         if(flag>=kk)
         {
-            t->value=rand()%99;
+            t->value=rand()%99; //inserting random number in leaf nodes
         }
 
         node* y=g[j].vA;
@@ -110,11 +115,11 @@ int minimax(node *n,graph g[])
         while(y!=NULL)
         {
             int k=minimax(y,g);
-            if(y->depth%2!=0 && ret<k)
+            if(n->depth%2==0 && ret<k)
             {
                 ret=k;
             }
-            else if(y->depth%2==0 && ret>k)
+            else if(n->depth%2!=0 && ret>k)
             {
                 ret=k;
             }
@@ -125,83 +130,105 @@ int minimax(node *n,graph g[])
     }
 }
 
-vector<int> prune(node *n,graph g[],int alpha,int beta)
+void pruned(int n,int m,int b_factor)
 {
-    cout<<"call : "<<n->vertex<<endl<<endl;
-    n->alpha=alpha;
-    n->beta=beta;
-    vector<int> r;
+    n=m-n;
+    //cout<<"from node "<<n <<"graph is pruned"<<endl;
+    int k=b_factor*((pow(b_factor,m-n)-1)/(b_factor-1))+1;
+    //cout<<"Number of nodes pruned is :"<<k<<endl<<endl;
+    count_flag+=k;
+}
+
+int alpha_beta_prune(node *n,graph g[],int alpha,int beta,int m,int b_factor)
+{
+    cout<<endl<<endl<<"call : "<<n->vertex<<endl;
+
+
+    int r;
     if(g[n->vertex].vA==NULL)
     {
-
-        r.push_back(n->value);
-        r.push_back(n->value);
-        cout<<"returning"<<endl;
-        return r;
+        //cout<<"returning"<<endl;
+        return n->value;
     }
     else
     {
-        node *y=g[n->vertex].vA;
 
-        //if(n->alpha<n->beta)
-        //{
-            vector<int> r=prune(y,g,n->alpha,n->beta);
+        node * y=g[n->vertex].vA;
 
-            if(n->depth%2==0 && r[0]>n->alpha)
-            {
-                n->alpha=r[1];
-            }
-            else if(n->depth%2!=0 && r[0]<n->beta)
-            {
-                n->beta=r[1];
-            }
-        //}
+        y->alpha=alpha;
+        y->beta=beta;
+        //cout<< "assigning alpha beta to node"<<y->vertex<<" alpha:"<<alpha<<" beta:"<<beta<<endl;
+
+        int r=alpha_beta_prune(y,g,y->alpha,y->beta,m,b_factor);  //recursive call 1
+        //cout<<"recived value"<<r<<endl;
+
+        if((n->depth%2==0 || n->depth==0)&& r>n->alpha)
+        {
+            //cout<<"-changing alpha value of node "<<n->vertex <<" from "<<n->alpha<<" to "<<r<<" beta"<<n->beta<<endl;
+            n->alpha=r;
+
+        }
+        else if(n->depth%2!=0 && r<n->beta)
+        {
+            //cout<<"-changing beta value of node "<<n->vertex <<" from "<<n->beta<<"to "<<r<<" alpha"<<n->alpha<<endl;
+            n->beta=r;
+
+        }
+
         y=y->next;
+        if(y!=NULL)
+        {
+            y->alpha=n->alpha;
+            y->beta=n->beta;
+            //cout<< "assigning alpha beta to node"<<y->vertex<<" alpha:"<<n->alpha<<" beta:"<<n->beta<<endl;
+
+        }
 
         while(y!=NULL)
         {
             if(n->alpha<n->beta)
             {
-                vector<int> k=prune(y,g,y->alpha,y->beta);
-                if(y->depth%2!=0 && r[0]<k[0])
-                {
-                    r[0]=k[0];
-                }
-                else if(y->depth%2==0 && r[0]>k[0])
-                {
-                    r[0]=k[0];
-                }
+                int k=alpha_beta_prune(y,g,n->alpha,n->beta,m,b_factor);  //recursive call 2
 
-                if(n->depth%2==0 && r[1]>n->alpha)
+                if(n->depth%2==0 && r<k)
+                    r=k;
+
+                else if(n->depth%2!=0 && r>k)
+                    r=k;
+
+                if(n->depth%2==0 && r>n->alpha)
                 {
-                    n->alpha=r[0];
+                    //cout<<"changing alpha value of node "<<n->vertex <<" from "<<n->alpha<<"to "<<r<<" beta"<<n->beta<<endl;
+                    n->alpha=r;
+
                 }
-                else if(n->depth%2!=0 && r[1]<n->beta)
+                else if(n->depth%2!=0 && r<n->beta)
                 {
-                    n->beta=r[0];
+                    //cout<<"changing beta value of node "<<n->vertex <<" from "<<n->beta<<"to "<<r<<" alpha"<<n->alpha<<endl;
+                    n->beta=r;
+
                 }
             }
             else
             {
-                count1++;
-                cout<<"pruned at depth "<<n->depth<<" node is "<<n->vertex <<" alpha:"<<n->alpha<<" beta:"<<n->beta<<endl ;
+                //cout<<"pruned at depth "<<n->depth<<" node is "<<n->vertex<<endl ;
+                pruned(n->depth,m,b_factor);
             }
             y=y->next;
+            if(y!=NULL)
+            {
+                y->alpha=n->alpha;
+                y->beta=n->beta;
+                //cout<< "assigning alpha beta to node"<<y->vertex<<" alpha:"<<n->alpha<<" beta:"<<n->beta<<endl;
+            }
         }
-        if(n->depth%2!=0)
-        {
-            r[1]=(n->beta);
-        }
-        else
-        {
-            r[1]=(n->alpha);
-        }
-        n->value=r[0];
+
+        n->value=r;
         return r;
     }
 }
 
-pair<int,int> min_and_max(int node_num,graph g[])
+pair<int,int> min_and_max(int node_num,graph g[])   //returns the pair of int with vertex number of minimum and maximum from all the child nodes from a given node
 {
     node *n;
     n=g[node_num].vA;
@@ -243,16 +270,10 @@ void optimal_play(node *n,graph g[],int d)
         if(i%2!=0)
         {
             cout<<"MAX->"<<ret.second<<" ";
-
-            if(g[ret.second].vA!=NULL)
-            {
-                call_node=ret.second;
-
-            }
+            if(g[ret.second].vA!=NULL){
+                call_node=ret.second;}
             else
-            {
                 break;
-            }
         }
         else if(i%2==0)
         {
@@ -266,12 +287,8 @@ void optimal_play(node *n,graph g[],int d)
             {
                 break;
             }
-
         }
-
     }
-
-
 }
 
 int main()
@@ -288,18 +305,28 @@ int main()
     }
     m=m-1;
     n_nodes=b_factor*((pow(b_factor,m)-1)/(b_factor-1))+1;
-    cout<<"total number of nodes : "<<n_nodes<<endl;
+    cout<<"Total number of nodes : "<<n_nodes<<endl;
     graph g[n_nodes];
 
     makeTree(b_factor,m,n_nodes,g);
     node root;
     root.depth=0;
     root.vertex=0;
+    root.alpha=-999;
+    root.beta=999;
+
+
+    //show(g,n_nodes);
+
+    int v=alpha_beta_prune(&root,g,-999,999,m,b_factor);
+
     int ret=minimax(&root,g);
     cout<<"root value "<<ret<<endl;
-    //vector<int> r=prune(&root,g34,-999,999)     //this function needs some debugging.
-    cout<<"PRINTING THE OPTIMAL PATH:"<<endl;
+
+    cout<<endl<<"OPTIMAL PATH:"<<endl;
     optimal_play(&root,g,m);
+
+    cout<<endl<<endl<<"NUMBER OF PRUNED NODES IS: "<<count_flag<<endl;
 
     return 0;
 }
